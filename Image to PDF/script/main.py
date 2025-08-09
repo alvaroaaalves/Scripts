@@ -164,7 +164,7 @@ class ImageToPDFConverter:
                 c.drawImage(image_path, 0, 0, width, height)
                 c.save()
 
-            self.root.after(100, lambda: self.conversion_complete(True, "CONVERTEU GOSTOSO COM SUCESSO AINNNN"))
+            self.root.after(100, lambda: self.conversion_complete(True, SEU CHARUTAO FOI CONVERTIDO COM SUCESSO AINNNN"))
 
         except Exception as e:
             self.root.after(100, lambda: self.conversion_complete(False, f"Ocorreu um erro durante a conversão: {e}"))
