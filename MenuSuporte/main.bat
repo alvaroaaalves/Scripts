@@ -1,8 +1,6 @@
 @echo off
 title MENU DO SUPORTE TECNICO
 
-
-
 :menu
 cls
 echo ======= MENU DO SUPORTE TECNICO =======
