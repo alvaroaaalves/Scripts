@@ -38,8 +38,11 @@
         <!-- SEÇÃO 1: COMPUTADORES EM TEMPO REAL -->
         <div class="bg-white rounded-xl shadow overflow-hidden">
             <div class="p-4 border-b border-gray-200 flex justify-between items-center">
-                <h2 class="font-semibold text-lg text-gray-700">Computadores Conectados (Hoje)</h2>
-                <button onclick="carregarDados()" class="bg-indigo-50 text-indigo-600 px-3 py-1.5 rounded-lg text-sm font-semibold hover:bg-indigo-100 transition">Atualizar Dados</button>
+                <div>
+                    <h2 class="font-semibold text-lg text-gray-700">Computadores Conectados</h2>
+                    <p class="text-xs text-gray-500">Clique no nome de uma máquina para ver detalhes, histórico e alterar o limite.</p>
+                </div>
+                <button onclick="carregarEquipamentos()" class="bg-indigo-50 text-indigo-600 px-3 py-1.5 rounded-lg text-sm font-semibold hover:bg-indigo-100 transition">Atualizar Dados</button>
             </div>
             
             <div class="overflow-x-auto">
@@ -51,7 +54,7 @@
                             <th class="p-4">Limite Diário</th>
                             <th class="p-4">Uso Hoje</th>
                             <th class="p-4">Status</th>
-                            <th class="p-4 text-center">Ações</th>
+                            <th class="p-4 text-center">Ações Rápidas</th>
                         </tr>
                     </thead>
                     <tbody id="tabela-equipamentos" class="divide-y divide-gray-200 text-sm">
@@ -61,36 +64,48 @@
             </div>
         </div>
 
-        <!-- SEÇÃO 2: HISTÓRICO DE DIAS ANTERIORES -->
-        <div class="bg-white rounded-xl shadow overflow-hidden">
-            <div class="p-4 border-b border-gray-200">
-                <h2 class="font-semibold text-lg text-gray-700">Histórico de Uso (Dias Anteriores)</h2>
+        <!-- SEÇÃO 2: DETALHES E HISTÓRICO DA MÁQUINA SELECIONADA (Oculto inicialmente) -->
+        <div id="painel-detalhes" class="hidden bg-white rounded-xl shadow p-6 space-y-6 border-2 border-indigo-100">
+            <div class="flex justify-between items-start border-b pb-4">
+                <div>
+                    <span class="text-xs font-bold uppercase tracking-wider text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-full">Detalhes do Equipamento</span>
+                    <h2 id="detalhe-nome" class="text-2xl font-bold text-gray-900 mt-2">Nome da Máquina</h2>
+                    <p class="text-sm text-gray-500 font-mono">MAC: <span id="detalhe-mac"></span></p>
+                </div>
+                <div class="flex items-center space-x-3">
+                    <button onclick="alterarLimiteSelecionado()" class="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-indigo-700 transition">Alterar Limite de Tempo</button>
+                    <button onclick="fecharDetalhes()" class="text-gray-400 hover:text-gray-600 font-bold text-xl px-2">&times;</button>
+                </div>
             </div>
-            
-            <div class="overflow-x-auto">
-                <table class="w-full text-left border-collapse">
-                    <thead>
-                        <tr class="bg-gray-50 border-b border-gray-200 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                            <th class="p-4">Data</th>
-                            <th class="p-4">Nome da Máquina</th>
-                            <th class="p-4">Endereço MAC</th>
-                            <th class="p-4">Tempo Total Utilizado</th>
-                        </tr>
-                    </thead>
-                    <tbody id="tabela-historico" class="divide-y divide-gray-200 text-sm">
-                        <!-- Preenchido via JavaScript -->
-                    </tbody>
-                </table>
+
+            <div>
+                <h3 class="font-semibold text-md text-gray-700 mb-3">Histórico de Uso dos Dias Anteriores</h3>
+                <div class="overflow-x-auto border rounded-lg">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-gray-50 border-b border-gray-200 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                                <th class="p-3">Data</th>
+                                <th class="p-3">Tempo Utilizado</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabela-historico-detalhe" class="divide-y divide-gray-200 text-sm">
+                            <!-- Preenchido via JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
     </div>
 
     <script>
-        // CONFIGURAÇÕES DO SUPABASE (Configuradas)
         const SUPABASE_URL = "https://hcyyvetgzscnzjxlwkcj.supabase.co";
         const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhjeXl2ZXRnenNjbnpqeGx3a2NqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc0NjgxNjMsImV4cCI6MjEwMzA0NDE2M30.7aTHDGL70L05IIvJZHNx5GjdYdozmpewITiqhaAz1NQ";
 
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        let maquinaSelecionadaId = null;
+        let macSelecionadoGlobal = null;
+        let limiteAtualGlobal = 3.0;
 
         window.addEventListener('DOMContentLoaded', async () => {
             const { data: { session } } = await supabaseClient.auth.getSession();
@@ -127,13 +142,8 @@
         function mostrarPainel() {
             document.getElementById('login-screen').classList.add('hidden');
             document.getElementById('admin-screen').classList.remove('hidden');
-            carregarDados();
-            setInterval(carregarDados, 30000);
-        }
-
-        function carregarDados() {
             carregarEquipamentos();
-            carregarHistorico();
+            setInterval(carregarEquipamentos, 30000);
         }
 
         async function carregarEquipamentos() {
@@ -169,34 +179,54 @@
 
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
-                    <td class="p-4 font-medium text-gray-900">${eq.nome_maquina}</td>
+                    <td class="p-4 font-medium text-indigo-600 cursor-pointer hover:underline" onclick="selecionarMaquina('${eq.id}', '${eq.mac_address}', '${eq.nome_maquina}', ${eq.limite_horas})">${eq.nome_maquina}</td>
                     <td class="p-4 text-gray-500 font-mono text-xs">${eq.mac_address}</td>
                     <td class="p-4">${eq.limite_horas}h</td>
-                    <td class="p-4 font-semibold text-indigo-600">${tempoFormatado}</td>
+                    <td class="p-4 font-semibold text-gray-800">${tempoFormatado}</td>
                     <td class="p-4">${statusBadge}</td>
-                    <td class="p-4 text-center space-x-2">
-                        <button onclick="alterarLimite('${eq.id}', ${eq.limite_horas})" class="bg-indigo-600 text-white px-3 py-1 rounded text-xs font-semibold hover:bg-indigo-700 transition">Editar Limite</button>
-                        <button onclick="resetarTempo('${eq.id}')" class="bg-amber-500 text-white px-3 py-1 rounded text-xs font-semibold hover:bg-amber-600 transition">Zerar Uso</button>
+                    <td class="p-4 text-center">
+                        <button onclick="resetarTempo('${eq.id}')" class="bg-amber-500 text-white px-3 py-1 rounded text-xs font-semibold hover:bg-amber-600 transition">Zerar Uso Hoje</button>
                     </td>
                 `;
                 tbody.appendChild(tr);
             });
+
+            // Se houver uma máquina selecionada, atualiza os dados detalhados dela também em tempo real
+            if (maquinaSelecionadaId) {
+                const atualizada = data.find(item => item.id === maquinaSelecionadaId);
+                if (atualizada) {
+                    limiteAtualGlobal = atualizada.limite_horas;
+                }
+            }
         }
 
-        async function carregarHistorico() {
+        async function selecionarMaquina(id, mac, nome, limite) {
+            maquinaSelecionadaId = id;
+            macSelecionadoGlobal = mac;
+            limiteAtualGlobal = limite;
+
+            document.getElementById('detalhe-nome').innerText = nome;
+            document.getElementById('detalhe-mac').innerText = mac;
+            document.getElementById('painel-detalhes').classList.remove('hidden');
+
+            // Rola a página suavemente até os detalhes
+            document.getElementById('painel-detalhes').scrollIntoView({ behavior: 'smooth' });
+
+            carregarHistoricoMaquina(mac);
+        }
+
+        async function carregarHistoricoMaquina(mac) {
             const { data, error } = await supabaseClient
                 .from('historico_uso')
                 .select('*')
-                .order('data', { ascending: false })
-                .limit(50);
+                .eq('mac_address', mac)
+                .order('data', { ascending: false });
 
-            if (error) return;
-
-            const tbody = document.getElementById('tabela-historico');
+            const tbody = document.getElementById('tabela-historico-detalhe');
             tbody.innerHTML = '';
 
-            if (data.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="4" class="p-4 text-center text-gray-500">Nenhum registro de histórico anterior encontrado.</td></tr>`;
+            if (error || !data || data.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="2" class="p-4 text-center text-gray-500">Nenhum registro de histórico anterior para esta máquina.</td></tr>`;
                 return;
             }
 
@@ -208,24 +238,35 @@
 
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
-                    <td class="p-4 font-medium text-gray-700">${dataFormatada}</td>
-                    <td class="p-4 text-gray-900">${hist.nome_maquina || 'Desconhecido'}</td>
-                    <td class="p-4 text-gray-500 font-mono text-xs">${hist.mac_address}</td>
-                    <td class="p-4 font-semibold text-indigo-600">${tempoFormatado}</td>
+                    <td class="p-3 font-medium text-gray-700">${dataFormatada}</td>
+                    <td class="p-3 font-semibold text-indigo-600">${tempoFormatado}</td>
                 `;
                 tbody.appendChild(tr);
             });
         }
 
-        async function alterarLimite(id, limiteAtual) {
-            const novoLimite = prompt("Digite o novo limite diário em horas (ex: 3.5 ou 4):", limiteAtual);
+        function fecharDetalhes() {
+            maquinaSelecionadaId = null;
+            macSelecionadoGlobal = null;
+            document.getElementById('painel-detalhes').classList.add('hidden');
+        }
+
+        async function alterarLimiteSelecionado() {
+            if (!maquinaSelecionadaId) return;
+            const novoLimite = prompt("Digite o novo limite diário em horas (ex: 3.5 ou 4):", limiteAtualGlobal);
             if (novoLimite !== null && !isNaN(novoLimite)) {
                 const { error } = await supabaseClient
                     .from('equipamentos')
                     .update({ limite_horas: parseFloat(novoLimite) })
-                    .eq('id', id);
+                    .eq('id', maquinaSelecionadaId);
 
-                if (!error) carregarEquipamentos();
+                if (error) {
+                    alert("Erro ao atualizar limite: " + error.message);
+                } else {
+                    limiteAtualGlobal = parseFloat(novoLimite);
+                    carregarEquipamentos();
+                    alert("Limite atualizado com sucesso!");
+                }
             }
         }
 
